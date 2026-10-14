@@ -93,11 +93,25 @@ xtool devices        # the iPhone must be visible over USB
 xtool dev run        # build, install and launch
 ```
 
-## Licence and scope
+## Licence
 
-**This is a personal build, not published anywhere.** There is deliberately no git remote
-configured on this repository. Nothing here goes to GitHub, to GitHub Pages, or to a portfolio
-without a separate conversation about what can be redistributed.
+| What | Licence |
+|---|---|
+| Everything openGym wrote — `frontend/`, `api/`, `catalogue/`, `mcp/`, `web/` | **AGPL-3.0-or-later**, © Duarte Santos |
+| This build's own work — `ios-shell/`, `frontend/src/native/`, `scripts/`, the docs | **AGPL-3.0-or-later**, *and additionally* **GPL-3.0-or-later** |
+| `catalogue/media/` images | © Gym visual — **not ours to licence**, see below |
+
+The repository is AGPL-3.0-or-later as a whole and has to be: it contains openGym's code. The new
+work is offered under both, which AGPL-3.0 section 13 permits explicitly. See `NOTICE.md`.
+
+## Scope
+
+This is a personal build. Nothing in here is published by default: `catalogue/media/` and every
+build output are gitignored, and `upstream/` — the pristine openGym clone that supplies the
+exercise media and the original `frontend/` — is gitignored too. A clone of this repository is
+therefore source only. **It will not build as-is**: `scripts/build-web.sh` reads the 6,554 media
+files from `upstream/`, which anyone using this needs to clone from
+[openGym](https://github.com/DuarteSantos8/openGym) themselves.
 
 - **openGym's code** is AGPL-3.0-or-later, © Duarte Santos, and this derivative keeps that licence.
   See `NOTICE.upstream` for their third-party notices, including the app-store exception under
