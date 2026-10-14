@@ -82,9 +82,24 @@ const swStamp = {
 // reads this tag in the synced copy after `cap sync` and fails the build without it.
 const flavor = {
   name: 'opengym-flavor',
-  transformIndexHtml() {
-    if (process.env.VITE_MOBILE !== '1') return
-    return [{ tag: 'meta', attrs: { name: 'opengym-flavor', content: 'mobile' }, injectTo: 'head' }]
+  // Returning { html, tags } rather than a bare tags array: injecting a second <title> leaves two
+  // in the document and a browser honours the first, so the name silently does not apply. The
+  // existing title and home-screen title are rewritten in place and only genuinely-new meta is
+  // appended.
+  transformIndexHtml(html) {
+    const tags = []
+    if (process.env.VITE_MOBILE !== '1') return { html, tags }
+    tags.push({ tag: 'meta', attrs: { name: 'opengym-flavor', content: 'mobile' }, injectTo: 'head' })
+    if (!APP_NAME) return { html, tags }
+
+    const esc = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+    let out = html
+      .replace(/<title>[\s\S]*?<\/title>/, `<title>${esc(APP_NAME)}</title>`)
+      .replace(
+        /(<meta\s+name="apple-mobile-web-app-title"\s+content=")[\s\S]*?(")/,
+        `$1${APP_NAME}$2`)
+    tags.push({ tag: 'meta', attrs: { name: 'application-name', content: APP_NAME }, injectTo: 'head' })
+    return { html: out, tags }
   }
 }
 
@@ -102,6 +117,10 @@ const appVersion = process.env.APP_BUILD ? `${pkgVersion}+${process.env.APP_BUIL
 
 // Set for the iOS build only. Every @capacitor/* import in the app is dynamic and MOBILE-gated, so
 // these aliases only ever exist in a phone bundle.
+// The name this build ships under. Unset leaves openGym's own name everywhere, so the web
+// flavour upstream is untouched; APP_NAME=... is set by scripts/build-web.sh.
+const APP_NAME = process.env.APP_NAME || ''
+
 const nativeShim = process.env.VITE_NATIVE_SHIM === '1'
 const shim = (...p) => fileURLToPath(new URL(`./src/native/${p.join('/')}`, import.meta.url))
 const nativeAlias = {
@@ -116,7 +135,7 @@ const nativeAlias = {
 }
 
 export default defineConfig({
-  define: { __APP_VERSION__: JSON.stringify(appVersion) },
+  define: { __APP_VERSION__: JSON.stringify(appVersion), __APP_NAME__: JSON.stringify(APP_NAME) },
   plugins: [react(), umami, flavor, swStamp, catalogueMedia],
   base: './',
   // VITE_NATIVE_SHIM=1 points the app's @capacitor/* dynamic imports at src/native/. Those imports

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!--
+    Stanley's Gym mark. The 1024 source for every raster the app ships; regenerate the PNGs with
+    scripts/make-assets.sh after any change here.
+
+    A kettlebell, not a barbell. openGym's own icon is a barbell seen side-on, and reusing that
+    shape would make the two apps indistinguishable on a home screen with both installed.
+
+    Proportion is the whole game here, and it took three passes to get right.
+    A kettlebell handle is WIDE and SHALLOW — nearly as wide as the body it springs from. The
+    first attempt used a tall narrow U and read as a padlock shackle at every size, which is the
+    failure mode to avoid: a narrow arch over a disc is the universal padlock silhouette. Widening
+    it to 0.83 of the body diameter broke that. The second attempt then swung too far — a flat
+    handle sitting so close to the body that the two merged into one blob with a notch, and the
+    hole between them was 38px, too small to read as a handle at all.
+    What makes it read is that hole. It is the only negative space in the mark, and it has to be
+    wide enough to see at 40px: here, 80px, between the handle's inner edge at y=126 and the
+    top of the body at y=206. Get that wrong in either direction and the mark becomes a lock or
+    a blob, never a kettlebell.
+
+    The S is knocked out of the body rather than drawn on it. At home-screen size you read a
+    kettlebell; when it is large — the About screen, the splash, this file — the S is there.
+    Knocking it out keeps one colour on screen instead of stacking a second shape on the first.
+  -->
+
+  <rect width="512" height="512" fill="#0c0e12"/>
+
+  <!-- Handle first, so the body overlaps and hides where it springs from. -->
+  <path d="M142 258 v-40 a114 114 0 0 1 228 0 v40"
+        fill="none" stroke="#d4af37" stroke-width="44" stroke-linecap="round"/>
+
+  <!-- Body. Low and wide, which is what stops the pair from reading as head-on-shoulders. -->
+  <circle cx="256" cy="342" r="136" fill="#d4af37"/>
+
+  <!-- The S, cut out of the body. Translated so it sits on the body's own centre, not the
+       canvas's. -->
+  <g transform="translate(0,20)">
+    <path d="M298 272
+             c0 -31 -23 -48 -56 -48
+             c-35 0 -58 19 -58 48
+             c0 25 19 35 45 42
+             c27 7 35 13 35 26
+             c0 13 -11 20 -26 20
+             c-15 0 -27 -7 -28 -21
+             l-31 9
+             c4 31 26 51 59 51
+             c37 0 62 -22 62 -56
+             c0 -27 -20 -38 -48 -45
+             c-27 -7 -34 -11 -34 -23
+             c0 -9 9 -14 21 -14
+             c11 0 20 5 21 16 z"
+          fill="#0c0e12"/>
+  </g>
+</svg>

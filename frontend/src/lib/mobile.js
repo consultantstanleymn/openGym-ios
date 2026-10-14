@@ -12,7 +12,15 @@
 import { t, tn } from './i18n-core.js'
 import { isoOf, todayISO } from './format.js'
 import { effectiveRoutineIds } from './history.js'
-import { NUDGE_COPY, lineIndex, nudgeFor, nudgeMinute, toneOf } from './nudge.js'
+import { nudgeFor, nudgeMinute, toneOf } from './nudge.js'
+// This build's own copy. toneFor maps the tone Settings already stores (friendly / guilt /
+// drill) onto the four sets here, adding `celebrate` for the streak milestones.
+import { streakNotification, toneFor as streakToneFor } from './streak-copy.js'
+
+// Settings stores one tone; the copy has four sets. friendly and guilt and drill pass straight
+// through, and anything else — including a tone chosen after this build shipped — falls back to
+// friendly rather than throwing.
+const STREAK_TONE_OF = r => streakToneFor(toneOf(r))
 import { excusedOn } from './day-notes.js'
 
 export const MOBILE = import.meta.env.VITE_MOBILE === '1'
@@ -143,7 +151,12 @@ export function buildNudgeNotifications(S, now = new Date()) {
   const at = nudgeMinute(r.time || '08:00')
   if (at == null) return []
   const routines = Array.isArray(S.routines) ? S.routines : []
-  const copy = NUDGE_COPY[toneOf(r)]
+  // The body comes from lib/streak-copy.js rather than NUDGE_COPY. The when/which/how-often rules
+  // below are unchanged — that is lib/nudge.js and stays exactly as it is; only the words change,
+  // from four lines a tone to around thirty, so a week of missed days never repeats itself.
+  // NUDGE_COPY itself is left alone: the server keeps a hand copy at api/nudge-copy.js under a test
+  // that asserts the two match, and it carries translations this build does not need to extend.
+  const tone = STREAK_TONE_OF(r)
   const date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12)
   const notifications = []
   for (let offset = 0; offset < NUDGE_WINDOW_DAYS; offset++) {
@@ -159,10 +172,13 @@ export function buildNudgeNotifications(S, now = new Date()) {
     const when = new Date(day)
     when.setHours(Math.floor(at / 60), at % 60, 0, 0)
     if (when <= now) continue
+    const copy = streakNotification(iso, tone, label)
     notifications.push({
       id: NUDGE_ID_BASE + offset,
-      title: t(copy.title),
-      body: t(copy.lines[lineIndex(iso, copy.lines.length)], label),
+      // Not passed through t(): these are this build's own lines and have no translations. An
+      // untranslated key would render as the raw English string anyway, so t() only adds a lookup.
+      title: copy.title,
+      body: copy.body,
       schedule: { at: when, allowWhileIdle: true },
     })
   }

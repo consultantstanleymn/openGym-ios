@@ -69,7 +69,7 @@ final class AppHandler: NativePlugin {
     }
 
     private func deliver(_ json: String) {
-        guard let webView = AppDelegate.shared?.webView else { return }
+        guard let webView = AppDelegate.current?.webView else { return }
         let js = "window.ogNativeDispatch && window.ogNativeDispatch(\(json))"
         webView.evaluateJavaScript(js)
     }
@@ -94,7 +94,7 @@ struct ShareHandler: NativePlugin {
         else {
             throw NativeError("share needs a url")
         }
-        guard let root = AppDelegate.shared?.window?.rootViewController else {
+        guard let root = AppDelegate.topViewController() else {
             throw NativeError("no view controller to present from")
         }
 
@@ -216,7 +216,7 @@ struct PrintHandler: NativePlugin {
         info.outputType = .general
         info.jobName = name
 
-        guard let root = AppDelegate.shared?.window?.rootViewController else {
+        guard let root = AppDelegate.topViewController() else {
             throw NativeError("no view controller to print from")
         }
 

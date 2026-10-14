@@ -127,6 +127,31 @@ function fromHsl([h, s, l]) {
 /** Whether `hex` is a grey for readableIn (see GREY_SAT). */
 export const isGrey = hex => toHsl(hex)[1] < GREY_SAT
 
+// Text needs 4.5:1. A fill or a control only needs 3:1 (THEMES.min), so readableIn can legally
+// stop at a colour that is unreadable as a link — and on the light page it does, for every
+// preset that scores under 4.5:1 there: gold 1.35:1, orange 1.97:1, lime 1.99:1, teal 2.31:1.
+// index.css solves the presets as a table; this is the same solve for a colour the user picked.
+export const TEXT_MIN = 4.5
+
+/**
+ * `hex` as TEXT in `theme`: unchanged in dark, where every system accent already clears 3:1 by a
+ * wide margin and brightening further would leave the palette; in light, walked darker along its
+ * own hue and saturation until it clears 4.5:1 against the weaker of the theme's two fills, which
+ * is the page or the white card — the same target the presets are solved to in index.css.
+ */
+export function accentTextIn(hex, theme) {
+  const th = THEMES[theme] || THEMES.dark
+  if (th.toward !== '#000000') return hex          // dark theme: the accent is already light enough
+  let [h, s, l] = toHsl(readableIn(hex, theme))
+  const hue = h < 0 ? h + 360 : h
+  for (let i = 0; i < 120 && l > 0.08; i++) {
+    const c = fromHsl([hue, s, l])
+    if (worst(c, th.bgs) >= TEXT_MIN) return c
+    l *= 0.97
+  }
+  return fromHsl([hue, s, 0.12])
+}
+
 /**
  * `hex` as drawn in `theme`: unchanged when it already stands out enough, otherwise made lighter
  * (dark theme) or darker (light theme) in small steps of HSL lightness until it does, hue and
@@ -186,6 +211,7 @@ export function customAccentVars(hex, theme) {
   const acc2 = mix(acc, '#000000', 0.25)
   return {
     '--acc': acc, '--acc-2': acc2, '--on-acc': inkOnBoth(acc, acc2),
+    '--acc-text': accentTextIn(c, theme),
     '--knob-ring': contrast('#ffffff', acc) < 1.5 ? KNOB_RING : 'transparent',
   }
 }
@@ -198,7 +224,9 @@ export function accentPair(v) {
   return { accent: ACCENTS[k], ink: ACCENT_INK[k] }
 }
 
-const CUSTOM_VARS = ['--acc', '--acc-2', '--on-acc', '--knob-ring']
+// --acc-text is in the list so a custom accent's text shade is cleared again when the user
+// switches back to a preset, which then takes its value from the [data-accent] rules in index.css.
+const CUSTOM_VARS = ['--acc', '--acc-2', '--acc-text', '--on-acc', '--knob-ring']
 
 /**
  * Puts the accent on the page root: a preset by `data-accent` (index.css does the rest), the

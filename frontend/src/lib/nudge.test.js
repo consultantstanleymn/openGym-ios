@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { NUDGE_COPY, NUDGE_TONES, lineIndex, nudgeFor, nudgeMinute, toneOf } from './nudge.js'
+// The phone's notification words live in streak-copy.js, not in NUDGE_COPY — see the note in
+// mobile.js buildNudgeNotifications. These assertions read that module so they keep meaning
+// something as the copy grows.
+import { streakNotification } from './streak-copy.js'
 import { buildNudgeNotifications } from './mobile.js'
 
 // The same rules as api/nudge.js (api/test/nudge.test.js holds the mirror of these cases):
@@ -61,8 +65,10 @@ describe('buildNudgeNotifications (mobile)', () => {
     const n = buildNudgeNotifications(S({ workouts: [w('2026-09-04')] }), now)
     expect(n.map(x => [x.schedule.at.getDate(), x.schedule.at.getHours(), x.schedule.at.getMinutes()]))
       .toEqual([[7, 20, 0], [9, 20, 0], [11, 20, 0]])
-    expect(n[0].title).toBe(NUDGE_COPY.friendly.title)
-    expect(n[0].body).toBe(NUDGE_COPY.friendly.lines[lineIndex('2026-09-07', 4)].replace('{0}', 'Push'))
+    const copy = streakNotification('2026-09-07', 'friendly', 'Push')
+    expect(n[0].title).toBe(copy.title)
+    expect(n[0].body).toBe(copy.body)
+    expect(n[0].body).toContain('Push')
     expect(new Set(n.map(x => x.id)).size).toBe(3)
   })
   it('is off unless both the reminder and the nudge are on', () => {
@@ -84,7 +90,8 @@ describe('buildNudgeNotifications (mobile)', () => {
   })
   it('takes the tone, and runs 2 hours after a late reminder', () => {
     const n = buildNudgeNotifications(S({ workouts: [w('2026-09-04')], reminder: { on: true, time: '19:00', nudge: true, tone: 'drill' } }), now)
-    expect(n[0].title).toBe(NUDGE_COPY.drill.title)
+    expect(n[0].title).toBe(streakNotification('2026-09-07', 'drill', 'Push').title)
+    expect(n[0].title).not.toBe(streakNotification('2026-09-07', 'friendly', 'Push').title)
     expect([n[0].schedule.at.getHours(), n[0].schedule.at.getMinutes()]).toEqual([21, 0])
   })
 })

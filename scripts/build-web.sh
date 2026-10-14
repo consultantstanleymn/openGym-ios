@@ -27,8 +27,12 @@ OUT="$HERE/ios-shell/Sources/openGym/WebBundle"
 
 cd "$FRONTEND"
 
-echo "==> vite build (mobile + native shim)"
-VITE_MOBILE=1 VITE_NATIVE_SHIM=1 npx vite build
+# APP_NAME is empty by default, which leaves openGym's own name in the header, the document
+# title and the home-screen label. Set it to ship the app under a different one.
+APP_NAME="${APP_NAME:-}"
+
+echo "==> vite build (mobile + native shim${APP_NAME:+, as "$APP_NAME"})"
+APP_NAME="$APP_NAME" VITE_MOBILE=1 VITE_NATIVE_SHIM=1 npx vite build
 
 echo "==> staging media (${MEDIA:-stills})"
 node "$UPSTREAM/scripts/catalogue/stage-media.mjs" dist

@@ -130,10 +130,26 @@ describe('readable on the theme', () => {
 
 describe('CSS for the own colour', () => {
   it('derives the accent, its pressed shade and its text', () => {
-    expect(customAccentVars('#0a84ff', 'dark')).toEqual({ '--acc': '#0a84ff', '--acc-2': '#0863bf', '--on-acc': '#000000', '--knob-ring': 'transparent' })
+    expect(customAccentVars('#0a84ff', 'dark')).toEqual({
+      '--acc': '#0a84ff', '--acc-2': '#0863bf', '--acc-text': '#0a84ff',
+      '--on-acc': '#000000', '--knob-ring': 'transparent',
+    })
     const v = customAccentVars('#000033', 'dark')
     expect(v['--acc']).toBe(readableIn('#000033', 'dark'))
     expect(v['--on-acc']).toBe(inkOn(v['--acc']))
+  })
+  // Text is held to 4.5:1, not the 3:1 a fill needs. On the light page a custom colour can pass
+  // readableIn and still be an unreadable link — light gold #ffcc00 scores 1.35:1 — so the text
+  // shade has to be solved for separately, and that is what --acc-text is.
+  it('the text shade clears 4.5:1 on the light page and a light card', () => {
+    for (const hex of ['#ffcc00', '#34c759', '#ff9500', '#30b0c7', '#af52de', '#0a84ff', '#ffffff']) {
+      const text = customAccentVars(hex, 'light')['--acc-text']
+      expect(contrast(text, '#f2f2f7'), `${hex} on the page`).toBeGreaterThanOrEqual(4.5)
+      expect(contrast(text, '#ffffff'), `${hex} on a card`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+  it('leaves the text shade alone in dark, where the accent already reads', () => {
+    expect(customAccentVars('#ffd60a', 'dark')['--acc-text']).toBe('#ffd60a')
   })
   it('the button text reads on the pressed shade too, not only at rest', () => {
     // #eb0037 in dark mode: black reads on it at rest but only 2.9:1 on its pressed shade

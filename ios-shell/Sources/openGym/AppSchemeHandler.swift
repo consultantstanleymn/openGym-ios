@@ -18,36 +18,74 @@ import WebKit
 @MainActor
 final class AppSchemeHandler: NSObject, WKURLSchemeHandler {
 
-    /// Where the built bundle landed inside the app. Package.swift declares WebBundle as a
-    /// resource, so SwiftPM's accessor is used rather than a hardcoded path.
-    ///
-    /// Optional, and deliberately not force-unwrapped: the directory is created by
-    /// scripts/build-web.sh, so a shell built without that step should say so plainly rather than
-    /// crash on launch. `serve` turns nil into that message.
-    static let bundleURL: URL? = Bundle.module.url(forResource: "WebBundle", withExtension: nil)
-
     static let scheme = "app"
     static let host = "openGym.local"
 
-    private var task = WebViewTask()
+    /// Where the built bundle is, found at launch rather than through Bundle.module alone.
+    ///
+    /// Package.swift declares WebBundle as a resource, so SwiftPM emits `Bundle.module` and the
+    /// compiled output lands in `openGym.app/openGym_openGym.bundle/WebBundle`. Bundle.module is
+    /// generated for a library product and probes a handful of relative locations; xtool links
+    /// that library into the app rather than embedding a framework, so which probe succeeds is
+    /// not obvious from the SwiftPM side. Rather than depend on it, every plausible location is
+    /// checked once, at launch, and the first one holding index.html wins. `bundleURL` is nil only
+    /// when the app was built without running scripts/build-web.sh.
+    static let bundleURL: URL? = locateBundle()
+
+    /// SwiftPM names the resource bundle `<package>_<target>.bundle`.
+    private static let resourceBundleName = "openGym_openGym.bundle"
+
+    private static func locateBundle() -> URL? {
+        var candidates: [URL?] = [
+            // Bundle.module's own answer, tried first because it is right when it works.
+            Bundle.module.url(forResource: "WebBundle", withExtension: nil),
+            Bundle.main.resourceURL?.appendingPathComponent(resourceBundleName)
+                .appendingPathComponent("WebBundle"),
+            Bundle.main.resourceURL?.appendingPathComponent("WebBundle"),
+            Bundle.main.bundleURL.appendingPathComponent(resourceBundleName)
+                .appendingPathComponent("WebBundle"),
+            Bundle.main.bundleURL.appendingPathComponent("WebBundle"),
+        ]
+
+        for candidate in candidates {
+            guard let url = candidate,
+                  FileManager.default.fileExists(
+                    atPath: url.appendingPathComponent("index.html").path)
+            else { continue }
+            NSLog("og: bundle at \(url.path)")
+            return url
+        }
+
+        // Nothing matched. Say exactly where we looked: on a 70 MB app this is the difference
+        // between "the web view is broken" and "build-web.sh never ran", and the device console
+        // is not readable from here.
+        let tried = candidates.compactMap { $0?.path }.joined(separator: "\n    ")
+        NSLog("og: BUNDLE NOT FOUND. Tried:\n    \(tried)")
+        return nil
+    }
+
+    /// Set once at launch so a failure page can name the real reason.
+    private(set) static var failureReason: String?
 
     func webView(_ webView: WKWebView, start urlSchemeTask: WKURLSchemeTask) {
         guard urlSchemeTask.request.url?.scheme == Self.scheme else {
             urlSchemeTask.didFailWithError(NativeError("unsupported scheme"))
             return
         }
+        NSLog("og: scheme request \(urlSchemeTask.request.url?.absoluteString ?? "?")")
         serve(urlSchemeTask)
     }
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {
-        task.cancel(urlSchemeTask)
+        // Nothing to unwind: every path in serve() replies synchronously, so there is no
+        // in-flight work left to cancel by the time WebKit calls stop.
     }
 
     private func serve(_ task: WKURLSchemeTask) {
         guard let bundle = Self.bundleURL else {
-            task.didFailWithError(NativeError(
-                "WebBundle is missing from the app. Run scripts/build-web.sh before xtool dev."))
-            return
+            let reason = Self.failureReason ?? "WebBundle is missing from the app."
+            NSLog("og: serving failure page: \(reason)")
+            return Self.reply(task, html: Self.failurePage(reason), status: 500)
         }
         guard let url = task.request.url else {
             task.didFailWithError(NativeError("no url"))
@@ -61,30 +99,82 @@ final class AppSchemeHandler: NSObject, WKURLSchemeHandler {
         let target = bundle.appendingPathComponent(relative)
 
         guard Self.isContained(target, in: bundle) else {
+            NSLog("og: REJECT \(relative) — escapes the bundle")
             task.didFailWithError(NativeError("path escapes the bundle"))
             return
         }
 
         guard let data = try? Data(contentsOf: target, options: .mappedIfSafe) else {
-            task.didFailWithError(NativeError("not found in bundle: \(relative)"))
-            return
+            NSLog("og: MISS \(relative)")
+            // A missing file is a 404, not a dead app: the page reports it and the rest of the
+            // bundle keeps working.
+            return Self.reply(task, html: Self.failurePage("not found in bundle: \(relative)"), status: 404)
         }
 
-        let response = HTTPURLResponse(
-            url: url,
-            statusCode: 200,
-            httpVersion: "HTTP/1.1",
-            headerFields: [
-                "Content-Type": Self.mimeType(for: relative),
-                // The whole app is a snapshot shipped inside the app; nothing should be cached
-                // across a reinstall, and a stale chunk after an update is worse than a re-read.
-                "Cache-Control": "no-cache",
-                "Content-Length": "\(data.count)",
-            ]
-        )!
+        NSLog("og: HIT \(relative) (\(data.count) bytes)")
+        return Self.reply(
+            task,
+            data: data,
+            type: Self.mimeType(for: relative),
+            status: 200)
+    }
+
+    // MARK: - responses
+
+    private static func reply(_ task: WKURLSchemeTask, html: String, status: Int) {
+        reply(task, data: Data(html.utf8), type: "text/html; charset=utf-8", status: status)
+    }
+
+    private static func reply(_ task: WKURLSchemeTask, data: Data, type: String, status: Int) {
+        guard let url = task.request.url,
+              let response = HTTPURLResponse(
+                url: url,
+                statusCode: status,
+                httpVersion: "HTTP/1.1",
+                headerFields: [
+                    "Content-Type": type,
+                    // The whole app is a snapshot shipped inside the app; nothing should be
+                    // cached across a reinstall, and a stale chunk after an update is worse.
+                    "Cache-Control": "no-cache",
+                    "Content-Length": "\(data.count)",
+                ])
+        else {
+            task.didFailWithError(NativeError("could not build response"))
+            return
+        }
         task.didReceive(response)
         task.didReceive(data)
         task.didFinish()
+    }
+
+    /// A readable page instead of a blank screen.
+    ///
+    /// The device console cannot be read from here — no Developer Disk Image, so no screenshot,
+    /// and iOS 27 does not carry app stdout into idevicesyslog. A failure that renders as an
+    /// explanation is therefore the only diagnostic available, so every failure path returns one.
+    private static func failurePage(_ reason: String) -> String {
+        """
+        <!doctype html><html><head><meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>openGym</title>
+        <style>
+          html,body{margin:0;height:100%;background:#0c0e12;color:#e6e8ee;
+            font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+          body{display:flex;align-items:center;justify-content:center;padding:24px}
+          div{max-width:520px}
+          h1{font-size:17px;margin:0 0 12px;color:#ff6b6b}
+          p{margin:0 0 12px}
+          pre{background:#151922;border:1px solid #262d3a;border-radius:10px;padding:12px;
+            overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:13px;color:#a3e635}
+          .muted{color:#8b93a7;font-size:13px}
+        </style></head>
+        <body><div>
+          <h1>The web bundle did not load</h1>
+          <p>This is a build problem, not a network one. Nothing here talks to a server.</p>
+          <pre>\(reason)</pre>
+          <p class="muted">Rebuild from the repository root:<br>bash scripts/build-web.sh</p>
+        </div></body></html>
+        """
     }
 
     // MARK: - path handling
@@ -131,12 +221,6 @@ final class AppSchemeHandler: NSObject, WKURLSchemeHandler {
 /// superseded; a task that is already finished must not be finished again.
 private final class WebViewTask {
     private var live = Set<ObjectIdentifier>()
-
-    func finish(_ task: WKURLSchemeTask, after block: () -> Void) {
-        live.insert(ObjectIdentifier(task))
-        block()
-        live.remove(ObjectIdentifier(task))
-    }
 
     func cancel(_ task: WKURLSchemeTask) {
         live.remove(ObjectIdentifier(task))

@@ -2,8 +2,21 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- The label under the icon. This build ships as Stanley's Gym; the bundle ID and every
+	     path inside stay ch.stanley.opengym / openGym so nothing else has to move with it. -->
 	<key>CFBundleDisplayName</key>
-	<string>openGym</string>
+	<string>Stanley's Gym</string>
+	<key>CFBundleName</key>
+	<string>Stanley's Gym</string>
+
+	<!-- xtool writes CFBundleIconFile itself (the iconPath basename, "AppIcon"). The array form
+	     is what iOS reads for a loose icon, and naming it here means the icon resolves even if
+	     that key is ever dropped: the bundle carries one 1024 PNG, no Assets.car, because xtool
+	     has no actool. -->
+	<key>CFBundleIconFiles</key>
+	<array>
+		<string>AppIcon</string>
+	</array>
 
 	<!-- iPhone and iPad, matching what xtool already sets. The app is a phone-first WebView
 	     shell; the iPad family entry keeps it installable there rather than iPhone-only. -->

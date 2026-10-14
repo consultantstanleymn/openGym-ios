@@ -100,3 +100,30 @@ export function installEventDispatch() {
 }
 
 installEventDispatch()
+// MARK: - console
+//
+// Forwards the page's console to the `ogConsole` script handler, which prints into the device
+// log (AppDelegate.swift). With no Developer Disk Image mounted there is no screenshot and no
+// Web Inspector, so this is the only way to see a JavaScript exception during boot instead of
+// staring at a blank screen. Warnings and errors only: the app is chatty and the log is not.
+if (typeof window !== 'undefined') {
+  const sink = window.webkit?.messageHandlers?.ogConsole
+  if (sink) {
+    for (const level of ['warn', 'error']) {
+      const original = console[level]
+      console[level] = (...args) => {
+        try {
+          sink.postMessage({
+            level,
+            text: args
+              .map(a => (a instanceof Error ? a.message
+                : typeof a === 'object' ? JSON.stringify(a)
+                  : String(a)))
+              .join(' '),
+          })
+        } catch { /* never let logging break the app */ }
+        original.apply(console, args)
+      }
+    }
+  }
+}

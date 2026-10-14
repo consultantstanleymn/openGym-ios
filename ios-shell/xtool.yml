@@ -8,8 +8,12 @@ bundleID: ch.stanley.opengym
 infoPath: Support/Info.plist
 
 # No actool in xtool, so the icon is a loose PNG at the bundle root rather than a compiled
-# Assets.car. CFBundleIconFiles below is the array form iOS actually reads for loose icons.
-iconPath: Support/AppIcon@2x.png
+# Assets.car — and xtool copies exactly ONE file for iconPath (Packer.swift:199), setting
+# CFBundleIconFile to its basename. So that one file is the 1024 master and iOS scales it; the
+# sized variants in Support/ and resources/ are for the web and for generating, not shipped
+# inside the app. Info.plist also lists it under CFBundleIconFiles, the array form iOS reads for
+# loose icons.
+iconPath: Support/AppIcon.png
 
 # Keychain access for the Coach's provider key and the Cloudflare Access token. Both are stored
 # with kSecAttrAccessibleAfterFirstUnlock: the reminder schedule is written while the app is in
