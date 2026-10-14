@@ -1,0 +1,18 @@
+version: 1
+product: openGym
+bundleID: ch.stanley.opengym
+
+# xtool generates a bare-bones Info.plist (UIDeviceFamily, portrait orientation, UILaunchScreen)
+# and merges this file over it. There is no storyboard: UILaunchScreen is a key, not a file, so
+# the app has no Interface Builder artefacts for xtool to have to be able to compile.
+infoPath: Support/Info.plist
+
+# No actool in xtool, so the icon is a loose PNG at the bundle root rather than a compiled
+# Assets.car. CFBundleIconFiles below is the array form iOS actually reads for loose icons.
+iconPath: Support/AppIcon@2x.png
+
+# Keychain access for the Coach's provider key and the Cloudflare Access token. Both are stored
+# with kSecAttrAccessibleAfterFirstUnlock: the reminder schedule is written while the app is in
+# the foreground and read back by UNUserNotificationCenter at fire time, which can happen with
+# the device locked but not before the first unlock after boot.
+entitlementsPath: Support/openGym.entitlements

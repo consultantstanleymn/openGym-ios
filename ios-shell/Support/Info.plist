@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>openGym</string>
+
+	<!-- iPhone and iPad, matching what xtool already sets. The app is a phone-first WebView
+	     shell; the iPad family entry keeps it installable there rather than iPhone-only. -->
+	<key>UIDeviceFamily</key>
+	<array>
+		<integer>1</integer>
+		<integer>2</integer>
+	</array>
+
+	<!-- openGym is a single-column layout with a bottom tab bar, drawn for a phone held upright.
+	     Landscape and upside-down are left off; xtool's default already says portrait, and this
+	     states it rather than relying on the merge. -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- No storyboards. xtool sets UILaunchScreen itself; a key with an empty dictionary is the
+	     modern way to say "system launch screen, no file", and it means Interface Builder is
+	     never involved. Main.storyboard from the Capacitor shell is deliberately not here. -->
+	<key>UILaunchScreen</key>
+	<dict/>
+
+	<!-- The web bundle is served from app://, so there is no network origin for ATS to judge
+	     and no NSAllowsArbitraryLoads. The app talks to no server: openGym's mobile flavour
+	     keeps everything on the device. A paired server, if ever used, would be https and would
+	     need its own entry here. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+
+	<!-- iOS evicts WKWebView localStorage under storage pressure, which is why lib/mobile.js
+	     mirrors every save to opengym-state.json in Application Support and restores from it at
+	     launch. That mirror is the durable copy, so no backup exclusion is needed for it; only
+	     Library/opengym-media/ is excluded, because Photos and Videos in a backup would be a
+	     second, unmanaged copy of the user's exercise files. -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+</dict>
+</plist>

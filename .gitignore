@@ -1,0 +1,29 @@
+# Build artifacts and dependencies — never committed.
+
+# The web bundle is a product of scripts/build-web.sh: a VITE_MOBILE=1 vite build plus 6554
+# exercise stills. 70 MB and ~6600 files, all reproducible with one script.
+ios-shell/Sources/openGym/WebBundle/
+
+# xtool's own working directory: SwiftPM products, the built .app and the .ipa.
+ios-shell/xtool/
+ios-shell/.build/
+ios-shell/.bsp/
+
+# Swift toolchain
+.build/
+
+node_modules/
+dist/
+
+# Upstream's exercise media is not AGPL and is not ours to redistribute. It is fetched
+# by cloning upstream/ at its pinned commit; see README.md. Staged into a build, never
+# committed.
+catalogue/media/
+
+# upstream/ is a shallow clone of openGym at a pinned commit. It is the pristine reference
+# and the source of api/coach and catalogue/media — never a nested repository of this one.
+# The content we actually build from is copied into frontend/ and api/ and committed.
+upstream/
+
+# Nothing in this repository is published. There is deliberately no git remote configured.
+# See README.md, "Licence and scope".

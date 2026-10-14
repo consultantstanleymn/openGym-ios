@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Keychain access for SecureStorage: the Coach's provider API key and the Cloudflare
+	     Access service token. lib/coach-secrets.js insists these never reach the synced state,
+	     never touch localStorage and never appear in an export, which is why they live here
+	     rather than in a file.
+
+	     afterFirstUnlock rather than whenUnlocked: UNUserNotificationCenter fires the scheduled
+	     workout reminders while the device is locked, and the app restores its state on launch
+	     without unlocking, so the keychain has to be readable in that state. whenUnlocked would
+	     make those reminders fail on a locked phone. -->
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)ch.stanley.opengym</string>
+	</array>
+</dict>
+</plist>
