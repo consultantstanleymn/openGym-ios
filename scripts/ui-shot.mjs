@@ -21,6 +21,9 @@ for (let i = 0; i < 60; i++) {
   } catch {}
   await sleep(500)
 }
+const [name = 'shot', theme = 'dark', accent = 'lime', tab = '0', w = '393', h = '852'] = process.argv.slice(2)
+const WIDTH = Number(w), HEIGHT = Number(h)
+
 const page = targets?.find(t => t.type === 'page')
 if (!page) { console.error('no page target'); process.exit(1) }
 
@@ -40,8 +43,10 @@ ws.onmessage = e => {
 
 await send('Page.enable')
 await send('Runtime.enable')
+// Width is settable so the same script does the responsive sweep. 393 is an iPhone 15/16 Pro;
+// 320 is the narrowest phone still in use, 375 the classic, 414 the Plus/Max, 768 a tablet.
 await send('Emulation.setDeviceMetricsOverride', {
-  width: 393, height: 852, deviceScaleFactor: 2, mobile: true,
+  width: WIDTH, height: HEIGHT, deviceScaleFactor: 2, mobile: true,
 })
 
 const ev = async (expression) => {
@@ -49,7 +54,6 @@ const ev = async (expression) => {
   return r?.result?.value
 }
 
-const [name = 'shot', theme = 'dark', accent = 'lime', tab = '0'] = process.argv.slice(2)
 
 await send('Page.navigate', { url: URL_ })
 await sleep(6000)
@@ -91,11 +95,31 @@ const shot = await send('Page.captureScreenshot', { format: 'png' })
 writeFileSync(`${OUT}/${name}.png`, Buffer.from(shot.data, 'base64'))
 
 console.log('file   :', `${OUT}/${name}.png`)
+console.log('width  :', WIDTH + 'x' + HEIGHT)
 console.log('theme  :', await ev('document.documentElement.dataset.theme'))
 console.log('accent :', await ev('document.documentElement.dataset.accent'))
 console.log('accent colour:', await ev('getComputedStyle(document.documentElement).getPropertyValue("--acc").trim()'))
 console.log('bg     :', await ev('getComputedStyle(document.body).backgroundColor'))
 console.log('text   :', JSON.stringify(await ev('document.body.innerText.trim().slice(0,180)')))
+console.log('overflow:', await ev(`(() => {
+  const d = document.documentElement, b = document.body
+  const bad = []
+  if (d.scrollWidth > d.clientWidth + 1) bad.push('html scrollWidth ' + d.scrollWidth + ' > ' + d.clientWidth)
+  if (b.scrollWidth > b.clientWidth + 1) bad.push('body scrollWidth ' + b.scrollWidth + ' > ' + b.clientWidth)
+  // A two-line clickable label is one of the flagged non-negotiables.
+  for (const el of document.querySelectorAll('button, a, [role="button"], [role="tab"]')) {
+    const label = (el.innerText || el.textContent || '').trim()
+    // An icon-only control has nothing to wrap; the week strip is deliberately two lines (day
+    // letter over date) and is not a label. Only a control with real words is a candidate.
+    if (!label || label.length < 3) continue
+    const cs = getComputedStyle(el)
+    const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.2
+    if (el.getClientRects().length && el.scrollHeight > lh * 1.6) {
+      bad.push('wrapping control: "' + label.slice(0, 30) + '"')
+    }
+  }
+  return bad.length ? bad.slice(0, 5) : 'none'
+})()`))
 if (logs.length) { console.log('ERRORS :'); logs.slice(0, 5).forEach(l => console.log('  ', l.slice(0, 200))) }
 ws.close()
 process.exit(0)

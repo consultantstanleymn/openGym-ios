@@ -11,15 +11,15 @@
 // web bundles; the Capacitor plugins are only ever imported behind it.
 import { t, tn } from './i18n-core.js'
 import { isoOf, todayISO } from './format.js'
-import { effectiveRoutineIds } from './history.js'
+import { effectiveRoutineIds, streakWeeks } from './history.js'
 import { nudgeFor, nudgeMinute, toneOf } from './nudge.js'
 // This build's own copy. toneFor maps the tone Settings already stores (friendly / guilt /
-// drill) onto the four sets here, adding `celebrate` for the streak milestones.
-import { streakNotification, toneFor as streakToneFor } from './streak-copy.js'
+// drill) onto the sets here; `celebrate` and `milestone` are this build's own additions.
+import { streakNotification, toneFor as streakToneFor, milestoneNotification } from './streak-copy.js'
 
-// Settings stores one tone; the copy has four sets. friendly and guilt and drill pass straight
-// through, and anything else — including a tone chosen after this build shipped — falls back to
-// friendly rather than throwing.
+// Settings stores one tone; the copy has more sets than that. friendly, guilt and drill pass
+// straight through, and anything else — including a tone chosen after this build shipped —
+// falls back to friendly rather than throwing.
 const STREAK_TONE_OF = r => streakToneFor(toneOf(r))
 import { excusedOn } from './day-notes.js'
 
@@ -145,6 +145,7 @@ export function buildReminderNotifications(S, now = new Date()) {
 // resyncs (every persist does), which drops the day and resets the count.
 export const NUDGE_WINDOW_DAYS = 7
 const NUDGE_ID_BASE = 2000
+const MILESTONE_ID = 3000
 export function buildNudgeNotifications(S, now = new Date()) {
   const r = S?.reminder
   if (!r?.on || !r.nudge) return []
@@ -202,10 +203,49 @@ export async function syncReminder(S, interactive = false) {
     let perm = await LocalNotifications.checkPermissions()
     if (perm.display !== 'granted' && interactive) perm = await LocalNotifications.requestPermissions()
     if (perm.display !== 'granted') return false
-    const notifications = [...buildReminderNotifications(S), ...buildNudgeNotifications(S)]
+    // The milestone rides along with the same schedule call, so one sync covers all three sets and
+    // the 64-request ceiling iOS imposes is not spent three times over.
+    const notifications = [
+      ...buildReminderNotifications(S),
+      ...buildNudgeNotifications(S),
+      ...buildMilestoneNotification(S, streakWeeks(S), new Date()),
+    ]
     if (notifications.length) await LocalNotifications.schedule({ notifications })
     return true
   } catch (e) { return false }
+}
+
+/**
+ * A notification for a streak that has just landed on a milestone — one week, a month, a year.
+ *
+ * `streak` is passed in rather than read here, because streakWeeks() calls new Date() internally
+ * and that makes it impossible to ask "would this have fired on the 12th?" in a test.
+ *
+ * The two conditions are deliberate. A milestone alone would fire every time the app re-synced,
+ * because nothing records that it was already said. Pairing it with "the newest workout is today"
+ * makes it fire once, at the moment the run actually reaches the number, and re-syncing later the
+ * same day is idempotent. It still returns null once the day rolls over, so nothing is left queued
+ * for tomorrow.
+ */
+export function buildMilestoneNotification(S, streak, now = new Date()) {
+  const set = S || {}
+  const workouts = Array.isArray(set.workouts) ? set.workouts.filter(w => typeof w?.d === 'string') : []
+  if (!workouts.length) return null
+  const last = workouts.reduce((m, w) => (w.d > m ? w.d : m), '')
+  const today = isoOf(now)
+  if (last !== today) return null
+
+  const say = milestoneNotification(streak)
+  if (!say) return null
+
+  // Twenty seconds out, so it lands after the workout sheet closes rather than under it.
+  const at = new Date(now.getTime() + 20_000)
+  return [{
+    id: MILESTONE_ID,
+    title: say.title,
+    body: say.body,
+    schedule: { at, allowWhileIdle: true },
+  }]
 }
 
 // Capacitor emits appStateChange when the native shell returns to the foreground. The visibility

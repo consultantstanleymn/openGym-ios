@@ -20,7 +20,7 @@
 // by date, exactly as nudge.js lineIndex does, so the same day always says the same thing and
 // consecutive days rotate instead of repeating.
 
-export const STREAK_TONES = ['celebrate', 'friendly', 'guilt', 'drill']
+export const STREAK_TONES = ['celebrate', 'friendly', 'guilt', 'drill', 'milestone']
 
 /** The tone to use, defaulting to friendly for anything unrecognised. */
 export const toneFor = r => (STREAK_TONES.includes(r) ? r : 'friendly')
@@ -35,6 +35,37 @@ export const indexFor = (iso, n) => Math.floor(Date.parse(iso + 'T00:00:00Z') / 
 export const fill = (line, name) => line.replace('{0}', name || 'the session')
 
 export const STREAK_COPY = {
+  // ── a streak hit a milestone ────────────────────────────────────────────────────────
+  // Ordered to match STREAK_MILESTONES, which indexes into this list. No {0}: a milestone is
+  // about the streak itself, so these name it directly rather than borrowing a routine name.
+  milestone: {
+    title: 'That’s a habit now',
+    lines: [
+      'One week. This is what the rest of it looks like.',
+      'Two weeks running. You’re not starting any more — you’re continuing.',
+      'Three weeks. That’s past the part where motivation carries you.',
+      'Four weeks. This has a shape now.',
+      'Six weeks. The bench knows you by name.',
+      'Eight weeks. You’ve missed fewer weeks than you’ve done.',
+      'Twelve weeks. A quarter of a year, kept.',
+      'Sixteen weeks. The old you is filing complaints.',
+      'Twenty weeks. Half a year, and it never got heavy.',
+      'Twenty-six weeks. That’s six months of showing up.',
+      'Thirty-two weeks. Eight months. Try explaining that one.',
+      'Forty weeks. Ten months. You’re basically a professional at this.',
+      'Fifty-two weeks. A full year. Sit with that.',
+      'Seventy-eight weeks. The habit outlived the motivation.',
+      'One hundred and four weeks. Two years. You built something.',
+      'Streak: measured in seasons, not weeks.',
+      'Another milestone. You are reliably a person who trains.',
+      'You keep hitting these. I keep counting.',
+      'The count is up. That is most of it.',
+      'Milestone. You have done this more times than most people start.',
+      'Again. The streak stopped being the point a while back.',
+      'Another one. The barbell is furniture now. You lift it anyway.',
+    ],
+  },
+
   // ── something was just logged, and the streak grows ────────────────────────────────
   celebrate: {
     title: 'That’s the one',
@@ -195,3 +226,32 @@ export function streakNotification(iso, tone, routineName) {
 /** How many distinct lines the copy carries, across every tone. */
 export const totalLines = () =>
   Object.values(STREAK_COPY).reduce((n, set) => n + set.lines.length, 0)
+// ── milestones ────────────────────────────────────────────────────────────────────────────
+//
+// The week counts that get said out loud. Short at the start because a week is a long time when
+// you are two weeks in, and then it stretches: nobody needs a notification for every week of a
+// two-year run, but the year mark is worth saying.
+export const STREAK_MILESTONES = [1, 2, 3, 4, 6, 8, 12, 16, 20, 26, 32, 40, 52, 78, 104]
+
+export const isMilestone = weeks => STREAK_MILESTONES.includes(weeks)
+
+/**
+ * The words for a streak milestone, or null when `weeks` is not one.
+ *
+ * Its own line pool rather than the celebrate set: those lines take a routine name through {0},
+ * and dropping "that" in to stand in for it produces sentences that parse but read as broken —
+ * "Streak grows. that banked." A milestone is about the streak, so it says so.
+ *
+ * The line is picked by the milestone, not by date, so it stays coherent with how long it took:
+ * week 1 can say "it's a habit now" and week 52 can say something about a year, and neither has
+ * to make sense at the other length. Dating them would pair the wrong words with the wrong run.
+ */
+export const milestoneNotification = weeks => {
+  if (!isMilestone(weeks)) return null
+  const lines = STREAK_COPY.milestone.lines
+  return {
+    title: STREAK_COPY.milestone.title,
+    body: lines[STREAK_MILESTONES.indexOf(weeks) % lines.length],
+    weeks,
+  }
+}
