@@ -138,8 +138,21 @@ cd frontend && npm test          # openGym's own suite
 npx vitest run src/native/       # the shim's 25 tests
 ```
 
-The upstream suite is 5059 passing against one pre-existing failure in
-`src/sheets.day-note.test.jsx`, which is upstream's and unrelated to anything here.
+The upstream suite runs 5070 passing, 28 skipped, against one genuine failure in
+`src/sheets.day-note.test.jsx`. That failure is upstream's: the same test fails
+identically in an untouched checkout of `DuarteSantos8/openGym`, and the file here is
+byte-for-byte the same. Nothing in this build causes it.
+
+Two more files can report as failed on a loaded machine —
+`src/store/useStore.adopt-hold.test.jsx` and `src/store/useStore.mobile-remote.test.jsx`.
+Both time out in a `beforeAll` that dynamically imports `useStore.js`, against a 10s hook
+limit. They pass on their own:
+
+```sh
+npx vitest run src/store/useStore.adopt-hold.test.jsx src/store/useStore.mobile-remote.test.jsx
+```
+
+That is upstream's slow-import problem, not a regression from this work.
 
 ## Credits
 
