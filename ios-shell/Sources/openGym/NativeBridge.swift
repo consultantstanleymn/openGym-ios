@@ -18,8 +18,9 @@ import WebKit
 // the header marks WK_SWIFT_UI_ACTOR — so the closure is @MainActor too, and the class matches.
 final class NativeBridge: NSObject, WKScriptMessageHandlerWithReply {
 
-    /// Handlers, keyed plugin then method: "Filesystem" -> "readFile".
-    private var handlers: [String: [String: ([String: Any]) throws -> Any]] = [:]
+    /// Handlers, keyed plugin then method: "Filesystem" -> "readFile". Internal, not private,
+    /// because Screenshot.swift registers one more from an extension.
+    var handlers: [String: [String: ([String: Any]) throws -> Any]] = [:]
 
     /// Plugin instances, so AppHandler can reach the bridge to register and drop listeners
     /// without the bridge holding a strong reference to itself.

@@ -68,14 +68,18 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         self.webView = webView
         NSLog("og: webView built")
 
-        let window = UIWindow(frame: UIScreen.main.bounds)
+        // ScreenshotWindow, not UIWindow: the shake has to be caught above the WKWebView, which
+        // consumes motion events long before they reach a view controller. See Screenshot.swift.
+        let window = ScreenshotWindow(frame: UIScreen.main.bounds)
         window.backgroundColor = .appBackground
         // The web view is the root view controller's view, not a child: it has to own the safe
         // area and the scroll insets the page negotiates itself.
         window.rootViewController = UIViewController()
         window.rootViewController?.view = webView
+        window.snapshotTarget = webView
         window.makeKeyAndVisible()
         self.window = window
+        bridge.installSnapshot(on: window)
         NSLog("og: window shown")
 
         if let url = URL(string: "\(AppSchemeHandler.scheme)://\(AppSchemeHandler.host)/index.html") {

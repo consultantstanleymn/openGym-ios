@@ -152,6 +152,22 @@ export default function Settings({ page = null, find = null, via = null }) {
   const [updateInfo, setUpdateInfo] = useState(null) // { hasUpdate, latestVersion, apkUrl, hashUrl } | null
   const [android, setAndroid] = useState(false)
   const [checking, setChecking] = useState(false)
+  // Screenshot, via the native bridge this build adds (ios-shell/Sources/openGym/Screenshot.swift).
+  // registerPlugin rather than an import, so this row costs the web build nothing: the name is only
+  // ever looked up on a tap, and on the web there is no bridge to answer.
+  const [snapNote, setSnapNote] = useState('')
+  const onSnapshotRowClick = async () => {
+    try {
+      const { registerPlugin } = await import('@capacitor/core')
+      const Snapshot = registerPlugin('Snapshot')
+      const r = await Snapshot.take({ reason: 'settings' })
+      setSnapNote(r?.name ? t('Saved {0}', r.name) : t('Saved'))
+      setTimeout(() => setSnapNote(''), 4000)
+    } catch (e) {
+      setSnapNote(t('Screenshot is not available on this build'))
+      setTimeout(() => setSnapNote(''), 4000)
+    }
+  }
   // Where auto-backup writes on this Android phone, for the Auto-backup row's own subtitle.
   const [backupDir] = useBackupFolder(MOBILE && android && !!S.autoBackup)
 
@@ -820,6 +836,15 @@ export default function Settings({ page = null, find = null, via = null }) {
               subtitle={t('Download the APK from opengym.ch')} accessory="chevron"
               onClick={() => window.open('https://opengym.ch/#download', '_blank', 'noopener')} />}
       </Section>
+      {/* Screenshots. Shake works, and is the nicer gesture, but a WKWebView can swallow motion
+          events before they reach the window, so there is a row as well — one that is either
+          demonstrably working or demonstrably not, rather than something that might quietly do
+          nothing. The file lands in Documents/Screenshots, which is visible in the Files app. */}
+      {MOBILE && !android && <Section footer={t('Saved to this app’s folder in Files. Shake the phone works too.')}>
+        <Row icon="camera" iconTint="var(--grey)" title={t('Take a screenshot')}
+          subtitle={snapNote || t('Save the current screen as a PNG')}
+          accessory="chevron" onClick={onSnapshotRowClick} />
+      </Section>}
       {/* "Add to Home screen": not inside the phone app, and not once it is installed. */}
       {!MOBILE && !standalone() && <Section title={t('Tip')}>
         <Row icon="share" iconTint="var(--blue)"
