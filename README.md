@@ -104,6 +104,8 @@ xtool dev run        # build, install and launch
 The repository is AGPL-3.0-or-later as a whole and has to be: it contains openGym's code. The new
 work is offered under both, which AGPL-3.0 section 13 permits explicitly. See `NOTICE.md`.
 
+Full licence texts: [`LICENSE`](LICENSE) (AGPL-3.0-or-later) and [`LICENSE-GPL-3.0.txt`](LICENSE-GPL-3.0.txt) (GPL-3.0-or-later).
+
 ## Scope
 
 This is a personal build. Nothing in here is published by default: `catalogue/media/` and every
