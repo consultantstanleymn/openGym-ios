@@ -11,6 +11,16 @@ bundle, compiled and packaged entirely on this Fedora machine with
 
 The result is `ios-shell/xtool/openGym.ipa` — 61 MB, arm64, iOS 17.4+.
 
+The app installs under the name **Stanley's Gym**, not openGym. The display name, the icon and
+the theme are the parts that differ from upstream. To rename it, edit `CFBundleDisplayName`
+and `CFBundleName` in [`ios-shell/Support/Info.plist`](ios-shell/Support/Info.plist) and
+rebuild with `xtool dev build`.
+
+The bundle id lives in [`ios-shell/xtool.yml`](ios-shell/xtool.yml) as `ch.stanley.opengym`. It
+is also hardcoded twice in `PluginHandlers.swift`, for the app id and the Keychain service
+prefix, so those have to move with it — change only the plist and `xtool.yml` and the app will
+install alongside the existing one instead of replacing it, keeping two copies of your data.
+
 ## How it works
 
 ```
